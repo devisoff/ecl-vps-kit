@@ -1,72 +1,170 @@
-# VPS Node Kit
+# ECL VPS Kit
 
-Готовый каркас репозитория для быстрой настройки VPS под Remnawave Node.
+ECL VPS Kit — интерактивный установщик для быстрой подготовки VPS под Remnawave Node.
 
-## Что внутри
+Проект собирает в одном меню сетевые настройки Ubuntu, базовую защиту сервера, установку Remnawave Node, модуль ограничения скорости клиентов, z4r и проверки состояния.
 
-- Красивое главное меню `ecl` с системной информацией.
-- Сетевой тюнинг Ubuntu: `sysctl`, `nf_conntrack`, `nofile`.
-- Защита: UFW, TrafficGuard-auto, Fail2Ban. IP панели не хранится в репозитории — скрипт спрашивает его при настройке UFW.
-- Установка Remnawave Node через Docker Compose.
-- Ограничение скорости клиентов через shaper-модуль из Reshala.
-- Запуск внешнего z4r-скрипта отдельным пунктом.
-- Проверки статуса: conntrack, TCP, limits, UFW, Fail2Ban, Docker, Remnawave, TrafficGuard.
-- Отдельная кнопка перезапуска Remnawave Node с `docker compose pull/down/up/logs`.
-
-## Как опубликовать на GitHub
-
-1. Создай новый репозиторий, например `vps-node-kit`.
-2. В файле `install.sh` замени:
+## Быстрый запуск
 
 ```bash
-REPO_OWNER="devisoff"
-REPO_NAME="ecl-vps-kit"
-BRANCH="main"
-```
-
-на свои значения.
-
-3. Залей файлы:
-
-```bash
-git init
-git add .
-git commit -m "Initial VPS Node Kit"
-git branch -M main
-git remote add origin https://github.com/YOURNAME/vps-node-kit.git
-git push -u origin main
-```
-
-## Установка одной командой
-
-После публикации репозитория:
-
-```bash
-wget -O install.sh https://raw.githubusercontent.com/YOURNAME/vps-node-kit/main/install.sh \
+wget -O install.sh https://raw.githubusercontent.com/devisoff/ecl-vps-kit/main/install.sh \
   && bash install.sh \
   && ecl
 ```
 
-## Локальный тест
-
-Если ты распаковал архив на сервере:
+После первой установки меню можно открыть в любой момент командой:
 
 ```bash
-cd vps-node-kit
-sudo bash install.sh
+ecl
 ```
 
-## Важные замечания
+## Поддерживаемая система
 
-- Модуль UFW сбрасывает старые правила. Перед запуском проверь SSH-порт, IP панели и порт ноды.
-- Модуль Remnawave Node создаёт `/opt/remnanode/docker-compose.yml` и выставляет права `600`, потому что там хранится `SECRET_KEY`.
-- Модуль ограничения скорости не копирует код Reshala в этот репозиторий. Он скачивает upstream в `/opt/reshala-shaper` и добавляет команду `vps-shaper`, чтобы открывать только меню шейпера.
-- Модуль z4r по умолчанию просит подтверждение и не запускается без согласия.
+Рекомендуемая среда:
 
-## Команды после установки
+- Ubuntu 24.04 LTS;
+- root-доступ;
+- чистый VPS без конфликтующих firewall-правил;
+- публичный IPv4;
+- Docker устанавливается автоматически при установке ноды.
+
+## Меню
+
+```text
+1) Сетевые настройки Ubuntu
+2) Защита: UFW + TrafficGuard-auto + Fail2Ban
+3) Установка Remnawave Node
+4) Ограничение скорости клиентов
+5) Установка z4r
+6) Проверки состояния
+7) Перезапустить Remnawave Node
+8) Установить всё по порядку
+0) Выход
+```
+
+## Что делает каждый модуль
+
+### 1. Сетевые настройки Ubuntu
+
+Применяет параметры для VPN-ноды:
+
+- `nf_conntrack`;
+- BBR + `fq`;
+- расширенные conntrack-лимиты;
+- диапазон ephemeral ports `10000 65535`;
+- TCP buffers и очереди;
+- `somaxconn`, `netdev_max_backlog`;
+- системный лимит файловых дескрипторов;
+- systemd-сервис `conntrack-tune.service`.
+
+### 2. Защита
+
+Настраивает:
+
+- UFW;
+- входящий доступ к `443/tcp`;
+- доступ к порту ноды по allowlist;
+- ICMP echo-request;
+- TrafficGuard-auto;
+- Fail2Ban для SSH.
+
+Перед применением модуль предупреждает о сбросе UFW-правил.
+
+### 3. Remnawave Node
+
+Выполняет:
+
+- `apt update && apt upgrade -y`;
+- установку Docker через официальный install-script Docker;
+- создание `/opt/remnanode`;
+- создание `.env`;
+- создание базового `docker-compose.yml`, если он отсутствует или подтверждена перезапись;
+- запуск контейнера через `docker compose up -d`.
+
+Рабочая директория ноды:
+
+```text
+/opt/remnanode
+```
+
+### 4. Ограничение скорости клиентов
+
+Устанавливает shaper-модуль из репозитория `DonMatteoVPN/Reshala-Remnawave-Bedolaga` в отдельную директорию:
+
+```text
+/opt/reshala-shaper
+```
+
+Команда запуска после установки:
 
 ```bash
-ecl         # главное меню
-vpskit      # старый алиас на то же меню
-vps-shaper  # меню ограничения скорости, если установлен пункт 4
+ecl-shaper
+```
+
+### 5. z4r
+
+Запускает внешний установщик:
+
+```bash
+https://raw.githubusercontent.com/IndeecFOX/z4r/4/z4r
+```
+
+Перед запуском требуется подтверждение.
+
+### 6. Проверки состояния
+
+Показывает:
+
+- conntrack;
+- TCP congestion control и qdisc;
+- диапазон портов;
+- очереди;
+- socket buffers;
+- лимиты файловых дескрипторов;
+- UFW;
+- Fail2Ban;
+- Docker;
+- Remnawave Node;
+- TrafficGuard-статистику, если лог существует.
+
+### 7. Перезапуск Remnawave Node
+
+Выполняет:
+
+```bash
+cd /opt/remnanode \
+  && docker compose pull \
+  && docker compose down \
+  && docker compose up -d \
+  && docker compose logs -f
+```
+
+## Пути установки
+
+```text
+/opt/ecl-vps-kit          основной установщик
+/usr/local/bin/ecl        команда запуска меню
+/usr/local/bin/ecl-shaper команда запуска speed limiter
+/opt/remnanode            Remnawave Node
+/opt/reshala-shaper       speed limiter
+/etc/ecl-vps-kit          локальные параметры установщика
+```
+
+## Безопасность
+
+Скрипт меняет сетевые параметры, UFW, Fail2Ban, Docker и systemd-настройки. Перед использованием на рабочем сервере рекомендуется первый запуск на тестовой VPS.
+
+Перед публикацией любых изменений проверь, что в репозитории нет приватных ключей, токенов, паролей, UUID клиентов, `.env`-файлов и персональных конфигураций.
+
+## Обновление установщика на сервере
+
+```bash
+wget -O install.sh https://raw.githubusercontent.com/devisoff/ecl-vps-kit/main/install.sh \
+  && bash install.sh
+```
+
+После обновления:
+
+```bash
+ecl
 ```
