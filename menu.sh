@@ -40,14 +40,36 @@ format_mbit() {
   fi
 }
 
+format_traffic_mbps() {
+  local bytes_per_sec="${1:-0}"
+  awk -v b="${bytes_per_sec}" 'BEGIN {
+    mbit = b * 8 / 1000000;
+    if (mbit < 0.01) printf "0.00 Мбит/с";
+    else if (mbit < 10) printf "%.2f Мбит/с", mbit;
+    else printf "%.1f Мбит/с", mbit;
+  }'
+}
+
 network_line() {
-  local iface speed rx tx
+  local iface rx1 tx1 rx2 tx2 drx dtx
   iface="$(default_iface || true)"
   [[ -z "${iface}" ]] && { printf 'интерфейс не определён'; return; }
-  speed="$(cat "/sys/class/net/${iface}/speed" 2>/dev/null || true)"
-  rx="$(cat "/sys/class/net/${iface}/statistics/rx_bytes" 2>/dev/null || echo 0)"
-  tx="$(cat "/sys/class/net/${iface}/statistics/tx_bytes" 2>/dev/null || echo 0)"
-  printf '%s, линк: %s, RX/TX: %s / %s' "${iface}" "$(format_mbit "${speed}")" "$(human_bytes "${rx}")" "$(human_bytes "${tx}")"
+
+  rx1="$(cat "/sys/class/net/${iface}/statistics/rx_bytes" 2>/dev/null || echo 0)"
+  tx1="$(cat "/sys/class/net/${iface}/statistics/tx_bytes" 2>/dev/null || echo 0)"
+  sleep 1
+  rx2="$(cat "/sys/class/net/${iface}/statistics/rx_bytes" 2>/dev/null || echo 0)"
+  tx2="$(cat "/sys/class/net/${iface}/statistics/tx_bytes" 2>/dev/null || echo 0)"
+
+  [[ "${rx1}" =~ ^[0-9]+$ ]] || rx1=0
+  [[ "${tx1}" =~ ^[0-9]+$ ]] || tx1=0
+  [[ "${rx2}" =~ ^[0-9]+$ ]] || rx2=0
+  [[ "${tx2}" =~ ^[0-9]+$ ]] || tx2=0
+
+  drx=$(( rx2 >= rx1 ? rx2 - rx1 : 0 ))
+  dtx=$(( tx2 >= tx1 ? tx2 - tx1 : 0 ))
+
+  printf '%s, сейчас ↓/↑: %s / %s' "${iface}" "$(format_traffic_mbps "${drx}")" "$(format_traffic_mbps "${dtx}")"
 }
 
 system_info() {
