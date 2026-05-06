@@ -184,12 +184,31 @@ load_settings() {
 
 run_module() {
   local module="$1"
+  local status=0
   need_root
   if [[ ! -f "${APP_DIR}/modules/${module}" ]]; then
     fail "Модуль не найден: ${APP_DIR}/modules/${module}"
-    exit 1
+    return 0
   fi
-  bash "${APP_DIR}/modules/${module}"
+
+  if bash "${APP_DIR}/modules/${module}"; then
+    status=0
+  else
+    status=$?
+    warn "Модуль ${module} завершился с ошибкой. Код: ${status}. Возвращаюсь в меню."
+  fi
+  return 0
+}
+
+mark_installed() {
+  local name="$1"
+  mkdir -p "${STATE_DIR}"
+  touch "${STATE_DIR}/${name}.installed"
+}
+
+is_marked_installed() {
+  local name="$1"
+  [[ -f "${STATE_DIR}/${name}.installed" ]]
 }
 
 service_is_active() {

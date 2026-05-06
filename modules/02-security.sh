@@ -114,6 +114,7 @@ CONF
 
 systemctl restart fail2ban
 
+mark_installed "security"
 ok "Защита настроена"
 ufw status numbered || true
 fail2ban-client status sshd || true

@@ -114,6 +114,31 @@ show_menu() {
   printf "q) Выход\n\n"
 }
 
+network_installed() {
+  is_marked_installed "network" || { [[ -f /etc/sysctl.d/99-vpn-node.conf ]] && systemctl is-enabled --quiet conntrack-tune.service 2>/dev/null; }
+}
+
+security_installed() {
+  is_marked_installed "security" || {
+    command -v ufw >/dev/null 2>&1       && ufw status 2>/dev/null | grep -q "Status: active"       && systemctl is-active --quiet fail2ban 2>/dev/null       && { command -v rknpidor >/dev/null 2>&1 || [[ -f /var/log/iptables-scanners-aggregate.csv ]]; }
+  }
+}
+
+remnanode_installed() {
+  is_marked_installed "remnanode" || { [[ -d /opt/remnanode ]] && [[ -f /opt/remnanode/docker-compose.yml ]]; }
+}
+
+run_if_needed() {
+  local title="$1"
+  local check_func="$2"
+  local module="$3"
+  if "${check_func}"; then
+    ok "${title}: уже установлено, пропускаю"
+  else
+    run_module "${module}"
+  fi
+}
+
 main() {
   need_root
   while true; do
@@ -132,9 +157,9 @@ main() {
       7) run_module "07-restart-node.sh"; pause ;;
       8)
         run_module "00-system-update.sh"
-        run_module "01-network.sh"
-        run_module "02-security.sh"
-        run_module "03-remnawave-node.sh"
+        run_if_needed "Сетевые настройки" network_installed "01-network.sh"
+        run_if_needed "Защита" security_installed "02-security.sh"
+        run_if_needed "Remnawave Node" remnanode_installed "03-remnawave-node.sh"
         pause
         ;;
       q|Q|й|Й|exit|выход) exit 0 ;;

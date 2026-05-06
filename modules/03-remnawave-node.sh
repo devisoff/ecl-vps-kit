@@ -72,5 +72,6 @@ compose_cmd="$(docker_compose_cmd)"
 ${compose_cmd} pull
 ${compose_cmd} up -d
 
+mark_installed "remnanode"
 ok "Remnawave Node установлен/запущен"
 ${compose_cmd} ps || true

@@ -107,14 +107,13 @@ services:
 7) Перезапустить Remnawave Node
 ```
 
-Он выполняет:
+Он выполняет обновление образа и тихий перезапуск контейнера без открытия live-логов:
 
 ```bash
 cd /opt/remnanode \
   && docker compose pull \
   && docker compose down \
-  && docker compose up -d \
-  && docker compose logs -f
+  && docker compose up -d
 ```
 
 ## Шейпер трафика

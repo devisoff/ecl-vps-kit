@@ -18,4 +18,5 @@ log "Перезапускаю Remnawave Node"
 ${compose_cmd} pull
 ${compose_cmd} down
 ${compose_cmd} up -d
-${compose_cmd} logs -f
+
+ok "Remnawave Node перезапущена"
