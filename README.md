@@ -196,6 +196,18 @@ ecl-z4r      # z4r, если установлен
 vpskit       # алиас для совместимости
 ```
 
+
+## Удаление управляющего скрипта
+
+Команда ниже удаляет только ECL VPS Kit и его быстрые команды. Она не удаляет Remnawave Node, Docker, UFW, Fail2Ban, TrafficGuard-auto, z4r, шейпер и сетевые настройки сервера.
+
+```bash
+sudo rm -rf /opt/ecl-vps-kit /etc/ecl-vps-kit \
+  /usr/local/bin/ecl /usr/local/bin/vpskit \
+  /usr/local/bin/ecl-shaper /usr/local/bin/ecl-z4r \
+  /usr/bin/ecl /usr/bin/vpskit
+```
+
 ## Требования
 
 - Ubuntu 22.04/24.04.

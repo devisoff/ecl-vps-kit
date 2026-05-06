@@ -13,6 +13,8 @@ C_GREEN='\033[1;32m'
 C_YELLOW='\033[1;33m'
 C_RED='\033[1;31m'
 C_CYAN='\033[1;36m'
+C_GRAY='\033[0;37m'
+C_WHITE='\033[1;37m'
 
 log() { printf "${C_BLUE}[ECL]${C_RESET} %s\n" "$*"; }
 ok() { printf "${C_GREEN}[OK]${C_RESET} %s\n" "$*"; }
@@ -31,20 +33,27 @@ pause() {
   read -r -p "Нажми Enter для возврата в меню..." _ || true
 }
 
-require_command() {
-  local cmd="$1"
-  local pkg="${2:-$1}"
-  if ! command -v "${cmd}" >/dev/null 2>&1; then
-    log "Устанавливаю пакет: ${pkg}"
-    apt-get update -y
-    DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkg}"
-  fi
+ask_line() {
+  local prompt="$1"
+  local value
+  printf "%s\n> " "${prompt}"
+  IFS= read -r value || true
+  printf '%s' "${value}"
 }
 
-confirm() {
+confirm_yes() {
   local prompt="${1:-Продолжить?}"
   local answer
-  read -r -p "${prompt} [y/N]: " answer || true
+  answer="$(ask_line "${prompt} [Y/n]")"
+  answer="$(printf '%s' "${answer}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  [[ -z "${answer}" || "${answer}" =~ ^[YyДд]$ ]]
+}
+
+confirm_no() {
+  local prompt="${1:-Продолжить?}"
+  local answer
+  answer="$(ask_line "${prompt} [y/N]")"
+  answer="$(printf '%s' "${answer}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   [[ "${answer}" =~ ^[YyДд]$ ]]
 }
 
@@ -52,8 +61,8 @@ prompt_required() {
   local prompt="$1"
   local value=""
   while [[ -z "${value}" ]]; do
-    read -r -p "${prompt}: " value || true
-    value="$(printf '%s' "${value}" | xargs)"
+    value="$(ask_line "${prompt}")"
+    value="$(printf '%s' "${value}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   done
   printf '%s' "${value}"
 }
@@ -62,8 +71,21 @@ prompt_default() {
   local prompt="$1"
   local default_value="$2"
   local value
-  read -r -p "${prompt} [${default_value}]: " value || true
-  value="$(printf '%s' "${value}" | xargs)"
+  value="$(ask_line "${prompt} [${default_value}]")"
+  value="$(printf '%s' "${value}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  printf '%s' "${value:-$default_value}"
+}
+
+prompt_default_optional() {
+  local prompt="$1"
+  local default_value="${2:-}"
+  local value
+  if [[ -n "${default_value}" ]]; then
+    value="$(ask_line "${prompt} [${default_value}]")"
+  else
+    value="$(ask_line "${prompt}")"
+  fi
+  value="$(printf '%s' "${value}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   printf '%s' "${value:-$default_value}"
 }
 
@@ -90,7 +112,52 @@ prompt_port() {
 }
 
 is_ipv4_or_cidr() {
-  [[ "$1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ]]
+  local value="$1"
+  [[ "${value}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$ ]] || return 1
+
+  local ip mask old_ifs part
+  ip="${value%/*}"
+  mask=""
+  [[ "${value}" == */* ]] && mask="${value#*/}"
+  if [[ -n "${mask}" && ( ! "${mask}" =~ ^[0-9]+$ || "${mask}" -lt 0 || "${mask}" -gt 32 ) ]]; then
+    return 1
+  fi
+  old_ifs="${IFS}"
+  IFS='.'
+  read -r -a parts <<< "${ip}"
+  IFS="${old_ifs}"
+  [[ ${#parts[@]} -eq 4 ]] || return 1
+  for part in "${parts[@]}"; do
+    [[ "${part}" =~ ^[0-9]+$ ]] || return 1
+    (( part >= 0 && part <= 255 )) || return 1
+  done
+}
+
+strip_domain_input() {
+  local value="$1"
+  value="${value#http://}"
+  value="${value#https://}"
+  value="${value%%/*}"
+  value="${value%%:*}"
+  printf '%s' "${value}"
+}
+
+is_domain_name() {
+  [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] && [[ "$1" == *.* ]]
+}
+
+resolve_domain_ipv4() {
+  local host="$1"
+  getent ahostsv4 "${host}" 2>/dev/null | awk '{print $1}' | sort -u | head -n 1
+}
+
+human_bytes() {
+  local bytes="${1:-0}"
+  awk -v b="${bytes}" 'BEGIN {
+    split("B KB MB GB TB PB", u, " "); i=1;
+    while (b>=1024 && i<6) { b/=1024; i++ }
+    if (i==1) printf "%d %s", b, u[i]; else printf "%.1f %s", b, u[i]
+  }'
 }
 
 save_setting() {
@@ -136,4 +203,8 @@ docker_compose_cmd() {
   else
     return 1
   fi
+}
+
+default_iface() {
+  ip route 2>/dev/null | awk '/^default /{print $5; exit}'
 }

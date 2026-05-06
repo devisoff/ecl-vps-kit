@@ -8,9 +8,6 @@ need_root
 
 log "Применяю сетевые настройки Ubuntu"
 
-require_command tee coreutils
-require_command modprobe kmod
-
 cat > /etc/modules-load.d/nf_conntrack.conf <<'CONF'
 nf_conntrack
 CONF

@@ -10,8 +10,6 @@ load_settings
 log "Установка Remnawave Node"
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -y
-apt-get upgrade -y
 apt-get install -y curl ca-certificates
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -28,9 +26,10 @@ mkdir -p /opt/remnanode
 cd /opt/remnanode
 
 node_port="$(prompt_port "Порт Remnawave Node" "${NODE_PORT:-2222}")"
-secret_key="$(prompt_default "SECRET_KEY для Remnawave Node" "change_me")"
+secret_key="$(prompt_default "SECRET_KEY для Remnawave Node" "${SECRET_KEY:-change_me}")"
 
 save_setting "NODE_PORT" "${node_port}"
+save_setting "SECRET_KEY" "${secret_key}"
 
 cat > /opt/remnanode/.env <<CONF
 NODE_PORT=${node_port}
@@ -39,7 +38,7 @@ CONF
 chmod 600 /opt/remnanode/.env
 
 if [[ -f /opt/remnanode/docker-compose.yml ]]; then
-  if confirm "docker-compose.yml уже существует. Перезаписать шаблоном?"; then
+  if confirm_yes "docker-compose.yml уже существует. Перезаписать шаблоном?"; then
     overwrite_compose="yes"
   else
     overwrite_compose="no"
@@ -52,13 +51,20 @@ if [[ "${overwrite_compose}" == "yes" ]]; then
   cat > /opt/remnanode/docker-compose.yml <<'CONF'
 services:
   remnanode:
-    image: remnawave/node:latest
     container_name: remnanode
     hostname: remnanode
-    restart: always
+    image: remnawave/node:latest
     network_mode: host
-    env_file:
-      - .env
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+    environment:
+      - NODE_PORT=${NODE_PORT}
+      - SECRET_KEY=${SECRET_KEY}
 CONF
 fi
 
