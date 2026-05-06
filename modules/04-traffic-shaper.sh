@@ -222,16 +222,48 @@ prompt_ports_csv() {
   done
 }
 
+read_menu_choice() {
+  local prompt="${1:-Выбери пункт}"
+  local default_value="${2:-}"
+  local value
+  if [[ -n "${default_value}" ]]; then
+    printf "%s [%s]\n> " "${prompt}" "${default_value}" >&2
+  else
+    printf "%s\n> " "${prompt}" >&2
+  fi
+  IFS= read -r value || true
+  value="$(printf '%s' "${value}" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  printf '%s' "${value:-${default_value}}"
+}
+
+quick_default_rule() {
+  local iface_default
+  clear
+  printf "${C_CYAN}Шейпер трафика — авто-правило${C_RESET}\n\n"
+  printf "Применяю значения по умолчанию:\n"
+  printf "  правило    : 1\n"
+  printf "  режим      : 1, статический\n"
+  printf "  порт       : 443\n"
+  printf "  скачивание : 5 МБ/с\n"
+  printf "  загрузка   : 5 МБ/с\n\n"
+
+  iface_default="$(default_iface || true)"
+  [[ -z "${iface_default}" ]] && iface_default="eth0"
+
+  ecl-shaper quick-create 1 1 443 5 5 "${iface_default}"
+  ok "Авто-правило применено: #1, режим 1, порт 443, DL/UL 5/5 МБ/с"
+}
+
 quick_rule_wizard() {
   local rule_id iface_default iface mode ports down up
   clear
   printf "${C_CYAN}Шейпер трафика — быстрое правило${C_RESET}\n\n"
   printf "Enter применяет значения по умолчанию:\n"
-  printf "- правило: 1\n"
-  printf "- режим: 1, статический\n"
-  printf "- порт: 443\n"
-  printf "- скачивание: 5 МБ/с\n"
-  printf "- загрузка: 5 МБ/с\n\n"
+  printf '%s\n' "- правило: 1"
+  printf '%s\n' "- режим: 1, статический"
+  printf '%s\n' "- порт: 443"
+  printf '%s\n' "- скачивание: 5 МБ/с"
+  printf '%s\n\n' "- загрузка: 5 МБ/с"
 
   rule_id="$(prompt_int_range "Номер правила" 0 31 1)"
   iface_default="$(default_iface || true)"
@@ -258,23 +290,24 @@ show_shaper_menu() {
   while true; do
     clear
     printf "${C_CYAN}Шейпер трафика${C_RESET}\n"
-    printf "1) Создать / изменить правило 443, 5/5 МБ/с\n"
+    printf "0) Авто-правило: #1, режим 1, порт 443, 5/5 МБ/с\n"
+    printf "1) Создать / изменить правило вручную\n"
     printf "2) Просмотреть текущие правила\n"
     printf "3) Статистика\n"
     printf "4) Полное меню Reshala Shaper\n"
     printf "5) Лог сервиса\n"
     printf "6) Перезапустить движок\n"
     printf "b) Назад\n\n"
-    choice="$(prompt_default "Выбери пункт" "1")"
-    choice="$(printf '%s' "${choice}" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    choice="$(read_menu_choice "Выбери пункт" "1")"
     case "${choice}" in
-      1) quick_rule_wizard || true; pause ;;
+      0) quick_default_rule || true; pause ;;
+      1) ecl-shaper create || true; pause ;;
       2) ecl-shaper rules || true; pause ;;
       3) ecl-shaper stats || true; pause ;;
-      4) ecl-shaper menu || true ;;
+      4) ecl-shaper menu || true; pause ;;
       5) ecl-shaper logs || true; pause ;;
       6) ecl-shaper restart || true; pause ;;
-      b|B|q|Q|й|Й|0) return 0 ;;
+      b|B|б|Б|q|Q|й|Й) return 0 ;;
       *) warn "Неверный выбор"; sleep 1 ;;
     esac
   done
