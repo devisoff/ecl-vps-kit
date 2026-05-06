@@ -113,7 +113,7 @@ while true; do
       pause
       ;;
     3)
-      bash "${APP_DIR}/modules/04-traffic-limiter.sh"
+      bash "${APP_DIR}/modules/04-traffic-shaper.sh"
       ;;
     b|B|0) exit 0 ;;
     *) warn "Неверный выбор"; sleep 1 ;;

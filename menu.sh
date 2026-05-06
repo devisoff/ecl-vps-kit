@@ -125,7 +125,7 @@ main() {
       1) run_module "01-network.sh"; pause ;;
       2) run_module "02-security.sh"; pause ;;
       3) run_module "03-remnawave-node.sh"; pause ;;
-      4) run_module "04-traffic-limiter.sh" ;;
+      4) run_module "04-traffic-shaper.sh" ;;
       5) run_module "05-z4r.sh"; pause ;;
       6) run_module "06-checks.sh" ;;
       7) run_module "07-restart-node.sh"; pause ;;
