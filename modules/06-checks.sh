@@ -101,6 +101,7 @@ show_summary() {
 while true; do
   show_summary
   choice="$(ask_line "Выбери пункт")"
+  choice="$(printf '%s' "${choice}" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   case "${choice}" in
     1) trafficguard_stats; pause ;;
     2)
@@ -115,7 +116,7 @@ while true; do
     3)
       bash "${APP_DIR}/modules/04-traffic-shaper.sh"
       ;;
-    b|B|0) exit 0 ;;
+    b|B|q|Q|й|Й|0) exit 0 ;;
     *) warn "Неверный выбор"; sleep 1 ;;
   esac
 done

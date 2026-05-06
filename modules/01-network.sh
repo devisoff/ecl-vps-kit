@@ -6,6 +6,9 @@ APP_DIR="${APP_DIR:-/opt/ecl-vps-kit}"
 source "${APP_DIR}/core/common.sh"
 need_root
 
+log "Проверка зависимостей сетевого модуля"
+apt-get install -y procps kmod >/dev/null
+
 log "Применяю сетевые настройки Ubuntu"
 
 cat > /etc/modules-load.d/nf_conntrack.conf <<'CONF'
