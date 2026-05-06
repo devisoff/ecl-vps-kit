@@ -120,6 +120,7 @@ main() {
     system_info
     show_menu
     choice="$(ask_line "Выбери пункт")"
+    choice="$(printf '%s' "${choice}" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     case "${choice}" in
       0) run_module "00-system-update.sh"; pause ;;
       1) run_module "01-network.sh"; pause ;;
@@ -136,7 +137,7 @@ main() {
         run_module "03-remnawave-node.sh"
         pause
         ;;
-      q|Q|exit|выход) exit 0 ;;
+      q|Q|й|Й|exit|выход) exit 0 ;;
       *) warn "Неверный выбор"; sleep 1 ;;
     esac
   done

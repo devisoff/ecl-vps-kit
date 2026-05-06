@@ -29,14 +29,16 @@ need_root() {
 }
 
 pause() {
-  printf "\n"
-  read -r -p "Нажми Enter для возврата в меню..." _ || true
+  printf "\n" >&2
+  printf "Нажми Enter для возврата в меню..." >&2
+  read -r _ || true
 }
 
 ask_line() {
   local prompt="$1"
   local value
-  printf "%s\n> " "${prompt}"
+  # Prompt goes to stderr so command substitutions capture only user's input.
+  printf "%s\n> " "${prompt}" >&2
   IFS= read -r value || true
   printf '%s' "${value}"
 }
