@@ -1,0 +1,9 @@
+# Shell scripts must keep LF endings — CRLF breaks the shebang on Linux
+# ("bad interpreter: /usr/bin/env bash^M"). Enforce regardless of platform.
+*.sh    text eol=lf
+*.bash  text eol=lf
+menu.sh text eol=lf
+
+# Normalize other text, but never touch binaries.
+*.md    text
+*.env   text eol=lf

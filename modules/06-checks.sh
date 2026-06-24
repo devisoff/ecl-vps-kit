@@ -4,6 +4,7 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/opt/ecl-vps-kit}"
 # shellcheck source=../core/common.sh
 source "${APP_DIR}/core/common.sh"
+trace_errors "06-checks.sh"
 need_root
 
 status_text() {
