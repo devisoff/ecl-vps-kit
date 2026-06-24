@@ -4,6 +4,7 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/opt/ecl-vps-kit}"
 # shellcheck source=../core/common.sh
 source "${APP_DIR}/core/common.sh"
+trace_errors "04-traffic-shaper.sh"
 need_root
 
 TARGET_DIR="/opt/reshala-shaper"
@@ -14,8 +15,8 @@ install_bpf_tools_best_effort() {
     return 0
   fi
 
-  apt-get install -y bpftool >/dev/null 2>&1 \
-    || apt-get install -y "linux-tools-$(uname -r)" linux-tools-common linux-tools-generic >/dev/null 2>&1 \
+  apt_get install -y bpftool >/dev/null 2>&1 \
+    || apt_get install -y "linux-tools-$(uname -r)" linux-tools-common linux-tools-generic >/dev/null 2>&1 \
     || true
 
   if ! command -v bpftool >/dev/null 2>&1; then
@@ -32,14 +33,10 @@ install_bpf_tools_best_effort() {
 }
 
 ensure_repo() {
-  export DEBIAN_FRONTEND=noninteractive
-
   log "Проверяю зависимости шейпера"
-  apt-get update -y
-  apt-get install -y \
+  ensure_packages \
     git curl ca-certificates python3 python3-pip \
-    clang llvm libelf-dev libbpf-dev make iproute2 jq bc kmod \
-    >/dev/null
+    clang llvm libelf-dev libbpf-dev make iproute2 jq bc kmod
   install_bpf_tools_best_effort
 
   if [[ -d "${TARGET_DIR}/.git" ]]; then
