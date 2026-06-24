@@ -4,23 +4,26 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/opt/ecl-vps-kit}"
 # shellcheck source=../core/common.sh
 source "${APP_DIR}/core/common.sh"
+trace_errors "03-remnawave-node.sh"
 need_root
 load_settings
 
 log "Установка Remnawave Node"
 
-export DEBIAN_FRONTEND=noninteractive
-apt-get install -y curl ca-certificates
+ensure_packages curl ca-certificates
 
 if ! command -v docker >/dev/null 2>&1; then
   log "Устанавливаю Docker"
-  curl -fsSL https://get.docker.com | sh
+  if ! fetch_and_run "https://get.docker.com" "установщик Docker" sh; then
+    fail "Не удалось установить Docker. Прерываю установку ноды."
+    exit 1
+  fi
 else
   ok "Docker уже установлен: $(docker --version)"
 fi
 
-systemctl enable docker
-systemctl start docker
+systemctl enable docker >/dev/null 2>&1 || warn "Не удалось включить автозапуск docker."
+systemctl start docker || { fail "Docker не запустился."; exit 1; }
 
 mkdir -p /opt/remnanode
 cd /opt/remnanode
@@ -68,7 +71,9 @@ services:
 CONF
 fi
 
-compose_cmd="$(docker_compose_cmd)"
+if ! compose_cmd="$(require_compose)"; then
+  exit 1
+fi
 ${compose_cmd} pull
 ${compose_cmd} up -d
 

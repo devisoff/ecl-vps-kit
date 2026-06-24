@@ -4,6 +4,7 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/opt/ecl-vps-kit}"
 # shellcheck source=../core/common.sh
 source "${APP_DIR}/core/common.sh"
+trace_errors "02-security.sh"
 need_root
 load_settings
 
@@ -52,8 +53,7 @@ save_setting "PANEL_HOST" "${panel_host}"
 save_setting "PANEL_IP" "${panel_ip}"
 save_setting "SSH_PORTS" "${ssh_ports}"
 
-export DEBIAN_FRONTEND=noninteractive
-apt-get install -y ufw curl ca-certificates fail2ban iptables dnsutils
+ensure_packages ufw curl ca-certificates fail2ban iptables dnsutils
 
 log "Отключаю IPv6 для UFW"
 sed -i 's/^IPV6=.*/IPV6=no/' /etc/default/ufw
@@ -89,7 +89,10 @@ ufw reload
 
 log "Устанавливаю TrafficGuard-auto"
 if confirm_yes "Запустить установщик TrafficGuard-auto из внешнего репозитория?"; then
-  curl -fsSL https://raw.githubusercontent.com/DonMatteoVPN/TrafficGuard-auto/refs/heads/main/install-trafficguard.sh | bash
+  fetch_and_run \
+    "https://raw.githubusercontent.com/DonMatteoVPN/TrafficGuard-auto/refs/heads/main/install-trafficguard.sh" \
+    "TrafficGuard-auto" \
+    || warn "TrafficGuard-auto не установился — продолжаю настройку Fail2Ban."
 else
   warn "TrafficGuard-auto пропущен"
 fi

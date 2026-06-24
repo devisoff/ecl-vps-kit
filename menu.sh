@@ -4,6 +4,7 @@ set -Eeuo pipefail
 APP_DIR="${APP_DIR:-/opt/ecl-vps-kit}"
 # shellcheck source=core/common.sh
 source "${APP_DIR}/core/common.sh"
+trace_errors "menu.sh"
 
 bar() {
   local used="$1" total="$2" width=12
@@ -19,14 +20,24 @@ bar() {
   printf ']'
 }
 
+_PUBLIC_IP_CACHE=""
 get_public_ip() {
+  # Cache for the lifetime of the menu process so we don't hit the network
+  # on every redraw (the menu redraws on each loop iteration).
+  if [[ -n "${_PUBLIC_IP_CACHE}" ]]; then
+    printf '%s' "${_PUBLIC_IP_CACHE}"
+    return 0
+  fi
+  local ip=""
   if command -v curl >/dev/null 2>&1; then
-    curl -fsS --max-time 2 https://api.ipify.org 2>/dev/null && return 0
+    ip="$(curl -fsS --max-time 2 https://api.ipify.org 2>/dev/null || true)"
   fi
-  if command -v wget >/dev/null 2>&1; then
-    wget -qO- --timeout=2 https://api.ipify.org 2>/dev/null && return 0
+  if [[ -z "${ip}" ]] && command -v wget >/dev/null 2>&1; then
+    ip="$(wget -qO- --timeout=2 https://api.ipify.org 2>/dev/null || true)"
   fi
-  echo "не определён"
+  [[ -z "${ip}" ]] && ip="не определён"
+  _PUBLIC_IP_CACHE="${ip}"
+  printf '%s' "${ip}"
 }
 
 format_mbit() {
@@ -164,7 +175,9 @@ run_if_needed() {
 main() {
   need_root
   while true; do
-    system_info
+    # Never let a transient failure inside system_info (df/free/awk/network
+    # sampling) take down the whole menu — `|| true` suspends set -e for it.
+    system_info || true
     show_menu
     choice="$(ask_line "Выбери пункт")"
     choice="$(printf '%s' "${choice}" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
